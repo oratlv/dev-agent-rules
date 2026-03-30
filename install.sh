@@ -6,7 +6,7 @@
 
 set -e
 
-REPO="git@github.com:oratlv/dev-agent-rules.git"
+REPO="https://github.com/oratlv/dev-agent-rules.git"
 SUBMODULE_PATH=".dev-agent-rules"
 # Relative path from project root to the skills directory inside the submodule
 SKILLS_RELATIVE=".dev-agent-rules/skills"

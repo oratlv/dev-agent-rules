@@ -1,36 +1,42 @@
 # MCP Configurations
 
-Example MCP server configurations for Claude Code.
+Claude Code loads MCPs from `.mcp.json` in the project root (project-scope) and from
+installed plugins (global-scope). This directory contains examples.
 
-## Usage
+---
 
-Copy the servers you want into your project's `.claude/settings.json` under `mcpServers`,
-or into your global Claude Code settings (`~/.claude/settings.json`).
+## How MCPs are loaded in Claude Code
+
+| Source | Scope | How to configure |
+|--------|-------|-----------------|
+| Claude Code plugins | Global (all projects) | Install via Claude Code marketplace |
+| `.mcp.json` in project root | Project-only | Add to the file, commit it |
+
+**Already available as plugins** (no `.mcp.json` entry needed):
+- `context7` — library documentation lookup
+- `playwright` — browser automation
+
+---
+
+## Project `.mcp.json`
+
+Copy `example.mcp.json` to your project root as `.mcp.json` and keep only what you need:
 
 ```bash
-# Copy the whole file as a starting point:
-cp mcp/claude-settings.json .claude/settings.json
-# Then edit to keep only what you need and set your tokens.
+cp mcp/example.mcp.json .mcp.json
 ```
 
-## Servers
+| Server | Auth | Purpose |
+|--------|------|---------|
+| `github` | GitHub Copilot (no token needed) | Issues, PRs, code search |
+| `fetch` | None | Fetch arbitrary URLs |
+| `sequentialthinking` | None | Structured multi-step reasoning |
+| `puppeteer` | None | Browser automation (alternative to playwright) |
 
-| Server | Package | Purpose | Needs token? |
-|--------|---------|---------|-------------|
-| `github` | `@modelcontextprotocol/server-github` | Issues, PRs, code search across repos | Yes — `GITHUB_TOKEN` |
-| `context7` | `@upstash/context7-mcp` | Fetch up-to-date library documentation | No |
-| `sequential-thinking` | `@modelcontextprotocol/server-sequential-thinking` | Structured multi-step reasoning | No |
-| `fetch` | `mcp-server-fetch` (uvx) | Fetch arbitrary URLs | No |
-| `playwright` | `@executeautomation/playwright-mcp-server` | Browser automation and web testing | No |
-
-## GitHub token
-
-Create a token at https://github.com/settings/tokens with `repo` and `read:org` scopes.
-
-For a personal account with multiple identities, create one token per account and configure
-separate MCP entries if needed (e.g. `github-personal`, `github-work`).
+---
 
 ## Prerequisites
 
 - `npx` — comes with Node.js
-- `uvx` — comes with `uv` (`brew install uv` on macOS); needed only for `fetch`
+- `uvx` — comes with `uv` (`brew install uv` on macOS); needed for `fetch`
+- GitHub Copilot — required for the `github` server via `api.githubcopilot.com/mcp/`

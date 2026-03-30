@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # update.sh — Pull latest skills from upstream sources into dev-agent-rules
-# Run this inside the dev-agent-rules repo to refresh skills from obra/superpowers
-# and anthropics/skills, then commit and push to distribute the update.
+# Run this inside the dev-agent-rules repo to refresh skills from obra/superpowers,
+# anthropics/skills, and affaan-m/everything-claude-code, then commit and push.
 #
 # Usage: bash update.sh [skill-name]
 #   No args: update all skills
@@ -14,6 +14,7 @@ SKILLS_DIR="$SCRIPT_DIR/skills"
 
 OBRA_REPO="https://github.com/obra/superpowers"
 ANTHROPIC_REPO="https://github.com/anthropics/skills"
+ECC_REPO="https://github.com/affaan-m/everything-claude-code"
 
 # obra/superpowers: skills live in skills/<name>/
 OBRA_SKILLS=(
@@ -31,6 +32,15 @@ OBRA_SKILLS=(
   finishing-a-development-branch
   using-superpowers
   writing-skills
+)
+
+# affaan-m/everything-claude-code: skills live in skills/<name>/
+ECC_SKILLS=(
+  strategic-compact
+  continuous-learning-v2
+  deep-research
+  prompt-optimizer
+  search-first
 )
 
 # anthropics/skills: each skill lives at <name>/ in the repo root
@@ -81,6 +91,7 @@ filter_skills() {
 
 filter_skills OBRA_SKILLS
 filter_skills ANTHROPIC_SKILLS
+filter_skills ECC_SKILLS
 
 if [ ${#OBRA_SKILLS[@]} -gt 0 ]; then
   echo ""
@@ -93,6 +104,12 @@ if [ ${#ANTHROPIC_SKILLS[@]} -gt 0 ]; then
   echo "=== anthropics/skills ==="
   # NOTE: Verify upstream structure. anthropics/skills has each skill at the repo root.
   update_skills_from_repo "$ANTHROPIC_REPO" "." "${ANTHROPIC_SKILLS[@]}"
+fi
+
+if [ ${#ECC_SKILLS[@]} -gt 0 ]; then
+  echo ""
+  echo "=== affaan-m/everything-claude-code ==="
+  update_skills_from_repo "$ECC_REPO" "skills" "${ECC_SKILLS[@]}"
 fi
 
 echo ""

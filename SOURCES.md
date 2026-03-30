@@ -1,6 +1,6 @@
 # Sources
 
-Skills in this repo are sourced from two upstream projects. Do not edit skill files
+Skills in this repo are sourced from three upstream projects. Do not edit skill files
 that carry a `.subtree-source` marker — they will be overwritten by `update.sh`.
 Add your own skills in `skills/` without a `.subtree-source` file.
 
@@ -19,6 +19,11 @@ using-superpowers, writing-skills
 **License:** Apache 2.0
 **Skills (9):** docx, pdf, xlsx, pptx, mcp-builder, skill-creator, webapp-testing,
 frontend-design, web-artifacts-builder
+
+## affaan-m/everything-claude-code
+**Repo:** https://github.com/affaan-m/everything-claude-code
+**License:** MIT
+**Skills (5):** strategic-compact, continuous-learning-v2, deep-research, prompt-optimizer, search-first
 
 ---
 

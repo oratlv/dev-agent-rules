@@ -21,8 +21,8 @@ curl -fsSL https://raw.githubusercontent.com/oratlv/dev-agent-rules/main/install
 ```
 
 This adds `dev-agent-rules` as a git submodule at `.dev-agent-rules/` and creates relative symlinks:
-- `.claude/skills → .dev-agent-rules/skills`
-- `.cursor/skills → .dev-agent-rules/skills`
+- `.claude/skills → ../.dev-agent-rules/skills`
+- `.cursor/skills → ../.dev-agent-rules/skills`
 
 Then commit:
 ```bash

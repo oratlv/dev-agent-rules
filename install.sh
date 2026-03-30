@@ -8,8 +8,9 @@ set -e
 
 REPO="https://github.com/oratlv/dev-agent-rules.git"
 SUBMODULE_PATH=".dev-agent-rules"
-# Relative path from project root to the skills directory inside the submodule
-SKILLS_RELATIVE=".dev-agent-rules/skills"
+# Relative path from the symlink's parent dir (.claude/ or .cursor/) to the skills dir.
+# Symlinks resolve relative to their own parent, so we need to go up one level first.
+SKILLS_RELATIVE="../.dev-agent-rules/skills"
 
 # Must be run from a git repo root
 if ! git rev-parse --show-toplevel > /dev/null 2>&1; then

@@ -66,6 +66,17 @@ Run from the target project's root:
 bash /path/to/dev-agent-rules/install.sh
 ```
 
+## Git workflow
+
+Always work on a feature branch — never commit directly to `main`.
+
+```bash
+git checkout -b feat/my-change
+# ... make changes ...
+/prp-commit      # stage + commit
+/prp-pr          # push + open PR
+```
+
 ## Communication
 - BLUF: lead with the answer.
 - Make minimal, focused changes — only what is necessary.

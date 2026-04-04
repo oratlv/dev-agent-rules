@@ -1,6 +1,6 @@
 ---
 name: pr-workflow
-description: "Use when creating pull requests, monitoring PR status, addressing bot feedback, or merging PRs. Do NOT use for simple single-file changes (use /create-pr command) or when not using GitHub."
+description: "Use when creating pull requests, monitoring PR status, addressing bot feedback, or merging PRs. Do NOT use for simple single-file changes (use /prp-pr command) or when not using GitHub."
 disable-model-invocation: true
 ---
 # PR Workflow Management
@@ -376,12 +376,22 @@ gh pr view <pr-number> --web
    └─ gh pr merge
 ```
 
+## Commands for This Workflow
+
+Use these slash commands at each stage:
+
+| Stage | Command | Description |
+|-------|---------|-------------|
+| Commit changes | `/prp-commit [description]` | Smart staging + conventional commit message |
+| Create PR | `/prp-pr [base-branch]` | Push, discover template, create PR with full body |
+| Review a PR | `/code-review [pr-number]` | Full PR review: fetch diff, validate, post GitHub review |
+| Fix build errors | `/build-fix` | Incrementally fix build/type errors before PR |
+
 ## Integration with Other Skills
 
 **Use with:**
-- `/git-workflow` - Clean commit history
-- `/tdd-workflow` - Tests written first
-- `/best-practices-enforcement` - Code quality
+- `tdd-workflow` skill - Tests written first
+- `finishing-a-development-branch` skill - End-of-branch decision flow
 
 ## Common Pitfalls
 

@@ -1,15 +1,19 @@
 # dev-agent-rules: Claude Instructions
 
 ## What this repo is
-A personal AI skills module installed as a git submodule in other projects.
+A personal AI skills and commands module installed as a git submodule in other projects.
 Skills in `skills/` are symlinked into `.claude/skills/` and `.cursor/skills/` of consumer repos.
+Commands in `commands/` are symlinked into `.claude/commands/` of consumer repos.
+
+This repo uses its own skills and commands — `.claude/skills` and `.claude/commands` are symlinked to the local `skills/` and `commands/` directories.
 
 ## Repo structure
 
 ```
-skills/          ← all 23 skills (upstream + custom)
+skills/          ← all skills (upstream + custom)
+commands/        ← all slash commands (upstream + custom)
 install.sh       ← installs into a target project (submodule + symlinks)
-update.sh        ← pulls latest from obra/superpowers and anthropics/skills
+update.sh        ← pulls latest skills and commands from upstream sources
 SOURCES.md       ← upstream attribution
 mcp/             ← example MCP configurations
 ```
@@ -19,7 +23,10 @@ mcp/             ← example MCP configurations
 **Do NOT edit files inside skill directories that contain a `.subtree-source` file.**
 These are synced from upstream (obra/superpowers, anthropics/skills) and will be overwritten by `update.sh`.
 
-**Safe to edit:** anything without `.subtree-source` — including this file, `install.sh`, `update.sh`, `SOURCES.md`, and any custom skills you add.
+**Do NOT edit command files listed in `ECC_COMMANDS` in `update.sh`.**
+These are synced from affaan-m/everything-claude-code and will be overwritten by `update.sh`.
+
+**Safe to edit:** anything without `.subtree-source` and not in `ECC_COMMANDS` — including this file, `install.sh`, `update.sh`, `SOURCES.md`, custom skills, and custom commands.
 
 ## Adding a custom skill
 
@@ -34,12 +41,22 @@ skills/
     scripts/     ← optional scripts
 ```
 
-## Updating upstream skills
+## Adding a custom command
+
+Drop a new `.md` file in `commands/`. Do not add it to `ECC_COMMANDS` in `update.sh`.
+
+```
+commands/
+  my-command.md   ← invoked as /my-command
+```
+
+## Updating upstream skills and commands
 
 ```bash
-bash update.sh             # update all upstream skills
+bash update.sh               # update all upstream skills and commands
 bash update.sh tdd-workflow  # update one skill
-git add skills/ && git commit -m "Update skills from upstream" && git push
+bash update.sh code-review   # update one command
+git add skills/ commands/ && git commit -m "Update skills and commands from upstream" && git push
 ```
 
 ## Installing into a new project

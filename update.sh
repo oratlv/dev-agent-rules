@@ -1,16 +1,17 @@
 #!/usr/bin/env bash
-# update.sh — Pull latest skills from upstream sources into dev-agent-rules
-# Run this inside the dev-agent-rules repo to refresh skills from obra/superpowers,
+# update.sh — Pull latest skills and commands from upstream sources into dev-agent-rules
+# Run this inside the dev-agent-rules repo to refresh from obra/superpowers,
 # anthropics/skills, and affaan-m/everything-claude-code, then commit and push.
 #
-# Usage: bash update.sh [skill-name]
-#   No args: update all skills
-#   With arg: update only the named skill (e.g. bash update.sh tdd-workflow)
+# Usage: bash update.sh [skill-or-command-name]
+#   No args: update all skills and commands
+#   With arg: update only the named item (e.g. bash update.sh tdd-workflow)
 
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 SKILLS_DIR="$SCRIPT_DIR/skills"
+COMMANDS_DIR="$SCRIPT_DIR/commands"
 
 OBRA_REPO="https://github.com/obra/superpowers"
 ANTHROPIC_REPO="https://github.com/anthropics/skills"
@@ -41,6 +42,15 @@ ECC_SKILLS=(
   deep-research
   prompt-optimizer
   search-first
+)
+
+# affaan-m/everything-claude-code: commands live in commands/<name>.md
+ECC_COMMANDS=(
+  code-review
+  build-fix
+  plan
+  prp-commit
+  prp-pr
 )
 
 # anthropics/skills: each skill lives at <name>/ in the repo root
@@ -82,38 +92,69 @@ update_skills_from_repo() {
 
 FILTER="${1:-}"
 
-filter_skills() {
+filter_list() {
   local -n arr=$1
   if [ -n "$FILTER" ]; then
     arr=("$FILTER")
   fi
 }
 
-filter_skills OBRA_SKILLS
-filter_skills ANTHROPIC_SKILLS
-filter_skills ECC_SKILLS
+filter_list OBRA_SKILLS
+filter_list ANTHROPIC_SKILLS
+filter_list ECC_SKILLS
+filter_list ECC_COMMANDS
 
 if [ ${#OBRA_SKILLS[@]} -gt 0 ]; then
   echo ""
-  echo "=== obra/superpowers ==="
+  echo "=== obra/superpowers (skills) ==="
   update_skills_from_repo "$OBRA_REPO" "skills" "${OBRA_SKILLS[@]}"
 fi
 
 if [ ${#ANTHROPIC_SKILLS[@]} -gt 0 ]; then
   echo ""
   echo "=== anthropics/skills ==="
-  # NOTE: Verify upstream structure. anthropics/skills has each skill at the repo root.
   update_skills_from_repo "$ANTHROPIC_REPO" "." "${ANTHROPIC_SKILLS[@]}"
 fi
 
-if [ ${#ECC_SKILLS[@]} -gt 0 ]; then
+if [ ${#ECC_SKILLS[@]} -gt 0 ] || [ ${#ECC_COMMANDS[@]} -gt 0 ]; then
   echo ""
   echo "=== affaan-m/everything-claude-code ==="
-  update_skills_from_repo "$ECC_REPO" "skills" "${ECC_SKILLS[@]}"
+  # Clone once, update both skills and commands
+  tmp=$(mktemp -d)
+  git clone --depth 1 "$ECC_REPO" "$tmp" -q
+
+  if [ ${#ECC_SKILLS[@]} -gt 0 ]; then
+    echo "  Skills:"
+    for skill in "${ECC_SKILLS[@]}"; do
+      src="$tmp/skills/$skill"
+      if [ ! -d "$src" ]; then
+        echo "    ⚠️  Skill not found: $skill"
+        continue
+      fi
+      rsync -a --delete "$src/" "$SKILLS_DIR/$skill/"
+      echo "    ✓ $skill"
+    done
+  fi
+
+  if [ ${#ECC_COMMANDS[@]} -gt 0 ]; then
+    echo "  Commands:"
+    mkdir -p "$COMMANDS_DIR"
+    for cmd in "${ECC_COMMANDS[@]}"; do
+      src="$tmp/commands/$cmd.md"
+      if [ ! -f "$src" ]; then
+        echo "    ⚠️  Command not found: $cmd.md"
+        continue
+      fi
+      cp "$src" "$COMMANDS_DIR/$cmd.md"
+      echo "    ✓ $cmd"
+    done
+  fi
+
+  rm -rf "$tmp"
 fi
 
 echo ""
 echo "Update complete."
 echo "Review changes with: git diff --stat"
 echo "Then commit and push:"
-echo "  git add skills/ && git commit -m 'Update skills from upstream' && git push"
+echo "  git add skills/ commands/ && git commit -m 'Update skills and commands from upstream' && git push"

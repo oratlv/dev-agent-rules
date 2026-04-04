@@ -11,6 +11,7 @@ SUBMODULE_PATH=".dev-agent-rules"
 # Relative path from the symlink's parent dir (.claude/ or .cursor/) to the skills dir.
 # Symlinks resolve relative to their own parent, so we need to go up one level first.
 SKILLS_RELATIVE="../.dev-agent-rules/skills"
+COMMANDS_RELATIVE="../.dev-agent-rules/commands"
 
 # Must be run from a git repo root
 if ! git rev-parse --show-toplevel > /dev/null 2>&1; then
@@ -44,11 +45,20 @@ link_skills() {
 
 echo "Creating symlinks..."
 link_skills ".claude/skills" "$SKILLS_RELATIVE"
+link_skills ".claude/commands" "$COMMANDS_RELATIVE"
 link_skills ".cursor/skills" "$SKILLS_RELATIVE"
+
+# Copy example MCP config if no .mcp.json exists yet
+if [ ! -f ".mcp.json" ]; then
+  cp "$SUBMODULE_PATH/mcp/example.mcp.json" ".mcp.json"
+  echo "  ✓ .mcp.json created from example (edit to keep only what you need)"
+else
+  echo "  ⚠️  .mcp.json already exists. See $SUBMODULE_PATH/mcp/example.mcp.json for reference."
+fi
 
 echo ""
 echo "Done. To commit:"
-echo "  git add .gitmodules $SUBMODULE_PATH .claude/skills .cursor/skills"
+echo "  git add .gitmodules $SUBMODULE_PATH .claude/skills .claude/commands .cursor/skills .mcp.json"
 echo "  git commit -m 'Add dev-agent-rules skills module'"
 echo ""
 echo "To update skills in the future:"

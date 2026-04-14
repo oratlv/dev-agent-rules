@@ -5,7 +5,7 @@
 
 ## Problem
 
-`dev-agent-rules` currently ships skills and commands. It is missing three artifact types that meaningfully expand what an AI coding assistant can do: subagents (agents), automated hooks, and contextual rules. It also lacks several high-value upstream skills and has no language-specific guidance.
+`dev-agent-rules` currently ships skills and commands. It is missing two artifact types that meaningfully expand what an AI coding assistant can do: subagents (agents) and contextual rules. It also lacks security hooks and several high-value upstream skills.
 
 ## Goal
 
@@ -16,7 +16,22 @@ Expand the repo into a complete, portable agentic coding toolkit — skills, age
 - Unity-specific rules or content
 - Install profiles / per-project feature flags (can be added later)
 - Cursor-specific routing (ROUTER.mdc / index.mdc)
-- Language rules beyond TypeScript and Python
+- Language-specific rules (deferred to follow-up)
+- Quality hooks like auto-formatting and YAML validation (deferred to follow-up)
+- Session-start hooks (redundant with Claude Code's native skill auto-loading)
+
+## Deferred items
+
+These are valuable but cut from v1 to reduce scope and ship faster:
+
+| Item | Reason for deferral |
+|---|---|
+| Language rules (`typescript.md`, `python.md`) | Need `globs` frontmatter and per-language testing to get right |
+| Quality hooks (`validate-yaml.py`, `format-after-edit.sh`) | Python dependency, underspecified file targeting, already opt-in |
+| `session-start.sh` hook | Redundant — Claude Code auto-loads skills from `.claude/skills/` |
+| `--diff` flag for `update.sh` | `--dry-run` + `git diff` after applying covers the use case |
+| 5 additional agents (`test-runner`, `data-validator`, `documentation-writer`, `git-workflow-specialist`, `monitoring-analyst`) | Niche for a personal toolkit; add when actually needed in practice |
+| `uninstall.sh` | Useful eventually; document manual removal for now |
 
 ---
 
@@ -24,23 +39,17 @@ Expand the repo into a complete, portable agentic coding toolkit — skills, age
 
 ```
 dev-agent-rules/
-├── skills/           ← existing + ~5 new upstream skills
-├── agents/           ← NEW: 9 subagent .md files
+├── skills/           ← existing + 5 new upstream skills
+├── agents/           ← NEW: 4 subagent .md files
 ├── commands/         ← existing (5 commands)
-├── hooks/            ← NEW: security, quality, session-start scripts
-│   ├── security/
-│   │   ├── block-secrets.sh
-│   │   └── scan-secrets-edit.sh
-│   ├── quality/
-│   │   ├── validate-yaml.py
-│   │   └── format-after-edit.sh
-│   └── session-start.sh
-├── rules/            ← NEW: behavioral + language rules
+├── hooks/            ← NEW: 2 security hook scripts
+│   └── security/
+│       ├── block-secrets.sh
+│       └── scan-secrets-edit.sh
+├── rules/            ← NEW: 3 behavioral rules
 │   ├── critical-rules.md
 │   ├── git-workflow.md
-│   ├── investigation-protocol.md
-│   ├── typescript.md
-│   └── python.md
+│   └── investigation-protocol.md
 ├── mcp/              ← existing
 ├── install.sh        ← updated
 ├── update.sh         ← updated
@@ -53,34 +62,34 @@ dev-agent-rules/
 ```
 my-project/
 ├── .dev-agent-rules/       ← submodule (pinned to a commit)
-└── .claude/
+├── .claude/
+│   ├── skills    → ../.dev-agent-rules/skills    (symlink)
+│   ├── commands  → ../.dev-agent-rules/commands   (symlink)
+│   ├── agents    → ../.dev-agent-rules/agents     (symlink, NEW)
+│   ├── rules     → ../.dev-agent-rules/rules      (symlink, NEW)
+│   └── settings.json   ← security hooks wired in by install script
+└── .cursor/
     ├── skills    → ../.dev-agent-rules/skills    (symlink)
-    ├── commands  → ../.dev-agent-rules/commands   (symlink)
     ├── agents    → ../.dev-agent-rules/agents     (symlink, NEW)
-    ├── rules     → ../.dev-agent-rules/rules      (symlink, NEW)
-    ├── hooks     → ../.dev-agent-rules/hooks      (symlink, NEW)
-    └── settings.json   ← hooks wired in by install script
+    └── rules     → ../.dev-agent-rules/rules      (symlink, NEW)
 ```
 
-`.cursor/` gets symlinks for `skills`, `agents`, and `rules`. Hooks are not symlinked into `.cursor/` — Cursor does not have a hooks system equivalent to Claude Code's.
+Hooks are **not** symlinked into any IDE directory. Claude Code reads hooks from `settings.json` command paths, not from a directory. The `settings.json` entries reference hook scripts directly via their submodule path (`.dev-agent-rules/hooks/...`, relative to project root). Cursor does not have a hooks system.
 
 ---
 
 ## Agents
 
-Nine subagent `.md` files in `agents/`, adapted from nitayk/ai-coding-rules (MIT). These are imported once and treated as custom content in this repo — they are not re-synced from upstream on subsequent `update.sh` runs.
+Four subagent `.md` files in `agents/`, adapted from nitayk/ai-coding-rules (MIT). These are imported once and treated as custom content in this repo — they are not re-synced from upstream on subsequent `update.sh` runs.
 
 | Agent | Purpose |
 |---|---|
 | `architect` | System design, architectural decisions, trade-off analysis |
 | `code-reviewer` | Reviews completed work against plan and coding standards |
 | `security-auditor` | Vulnerability scanning, secrets, auth issues |
-| `test-runner` | Test strategy, coverage analysis, test quality |
 | `verifier` | Evidence-based verification before claiming completion |
-| `data-validator` | Schema validation, data integrity, migration safety |
-| `documentation-writer` | Writes and updates docs, READMEs, API docs |
-| `git-workflow-specialist` | Commit strategy, branching, PR descriptions |
-| `monitoring-analyst` | Observability, logging, alerting recommendations |
+
+Five additional agents (`test-runner`, `data-validator`, `documentation-writer`, `git-workflow-specialist`, `monitoring-analyst`) are available in nitayk's repo and can be added when needed. See Deferred Items.
 
 Agents complement existing skills: skills instruct Claude how to behave; agents are context-isolated specialists Claude delegates work to. Two agents overlap conceptually with existing skills (`requesting-code-review` → `code-reviewer`, `verification-before-completion` → `verifier`) but serve different roles — the skills define workflows, the agents execute specialist reviews.
 
@@ -100,7 +109,7 @@ model: inherit
 
 ## Hooks
 
-Three categories of hooks. Scripts live in `hooks/` and are symlinked into `.claude/hooks/` in consumer projects. Hook configuration is merged into `.claude/settings.json` by `install.sh`. All hooks are imported once and treated as custom — they are not re-synced from upstream.
+Security hooks only in v1. Scripts live in `hooks/security/` in the submodule. Hook configuration is merged into `.claude/settings.json` by `install.sh`. All hooks are imported once and treated as custom — they are not re-synced from upstream.
 
 ### Security (always-on)
 
@@ -130,42 +139,11 @@ Three categories of hooks. Scripts live in `hooks/` and are symlinked into `.cla
 
 No output (exits 0 with no JSON) when no secrets patterns are found.
 
-### Quality (opt-in at install time)
-
-**`validate-yaml.py`** — `PostToolUse` hook, matchers: `Write`, `Edit`. Runs only on `.yml`/`.yaml` files after edit. If YAML is invalid, blocks Claude from continuing and provides the parse error so it can self-correct. Exits 0 with:
-
-```json
-{
-  "decision": "block",
-  "reason": "YAML syntax error: <parse error detail>. Fix the file before proceeding.",
-  "hookSpecificOutput": {
-    "hookEventName": "PostToolUse",
-    "additionalContext": "<full yaml.safe_load traceback>"
-  }
-}
-```
-
-No-ops on non-YAML files (exits 0 with no output).
-
-**`format-after-edit.sh`** — `PostToolUse` hook, matchers: `Write`, `Edit`. Detects project formatter config (prettier, black, ruff) and runs formatting after edits. No-ops if no formatter config is found. Exits 0 with no JSON output — formatting runs silently in the background.
-
-### Session
-
-**`session-start.sh`** — `SessionStart` hook. Injects the `using-superpowers` skill content into context using the `hookSpecificOutput.additionalContext` JSON field. This fires per-project (the hook is installed into each project's `.claude/settings.json`). If the `using-superpowers` skill file is not found, the hook exits cleanly with no output.
-
-Output format:
-```json
-{
-  "hookSpecificOutput": {
-    "hookEventName": "SessionStart",
-    "additionalContext": "<content of using-superpowers/SKILL.md>"
-  }
-}
-```
+**Limitation:** `block-secrets.sh` only intercepts the `Read` tool. A `Bash` command like `cat .env` bypasses it entirely. This is a best-effort guardrail — it catches the common case (Claude using `Read` to access sensitive files) but is not a security boundary.
 
 ### Hook settings.json format
 
-The target JSON shape injected into `.claude/settings.json` (hooks use the Claude Code hooks API format — scripts output JSON to stdout, exit 0):
+The target JSON shape injected into `.claude/settings.json` (hooks use the Claude Code hooks API — scripts output JSON to stdout, exit 0):
 
 ```json
 {
@@ -179,33 +157,18 @@ The target JSON shape injected into `.claude/settings.json` (hooks use the Claud
         "matcher": "Write|Edit",
         "hooks": [{ "type": "command", "command": ".dev-agent-rules/hooks/security/scan-secrets-edit.sh" }]
       }
-    ],
-    "PostToolUse": [
-      {
-        "matcher": "Write|Edit",
-        "hooks": [{ "type": "command", "command": ".dev-agent-rules/hooks/quality/validate-yaml.py" }]
-      },
-      {
-        "matcher": "Write|Edit",
-        "hooks": [{ "type": "command", "command": ".dev-agent-rules/hooks/quality/format-after-edit.sh" }]
-      }
-    ],
-    "SessionStart": [
-      {
-        "hooks": [{ "type": "command", "command": ".dev-agent-rules/hooks/session-start.sh" }]
-      }
     ]
   }
 }
 ```
 
-Quality hooks (`validate-yaml.py`, `format-after-edit.sh`) are only included when the user opts in during install.
+Note on path relativity: symlinks (e.g., `.claude/skills → ../.dev-agent-rules/skills`) are relative to the symlink's parent directory. Hook commands in `settings.json` (e.g., `.dev-agent-rules/hooks/...`) are relative to the project root. These are different frames of reference — both are correct.
 
 ### Install behavior
 
-`install.sh` merges hook config into `.claude/settings.json` using `jq`. Merge strategy: **append by script path** — if a hook entry with the same `command` path already exists in `settings.json`, it is skipped. This makes the install idempotent and safe to re-run.
+`install.sh` merges hook config into `.claude/settings.json` using `jq`. Merge strategy: **append by script path** — if a hook entry with the same `command` path already exists in `settings.json`, it is skipped. This makes the install idempotent and safe to re-run. The merge is a deep append into the `hooks` object's arrays, not a top-level key replace — existing hooks from the user or other tools are preserved.
 
-If `jq` is not available, the script prints the full security hooks JSON block (quality hooks if opted in) and instructs the user to merge it into `.claude/settings.json` manually.
+If `jq` is not available, the script prints the security hooks JSON block above and instructs the user to merge it into `.claude/settings.json` manually.
 
 **Editing policy:** All hooks are safe to edit directly. No `.subtree-source` file — `update.sh` will not touch the `hooks/` directory.
 
@@ -213,9 +176,18 @@ If `jq` is not available, the script prints the full security hooks JSON block (
 
 ## Rules
 
-Markdown files in `rules/`, symlinked to `.claude/rules/` in consumer projects. Claude Code loads them contextually when relevant files are open.
+Markdown files in `rules/`, symlinked to `.claude/rules/` in consumer projects.
 
 ### Behavioral rules (custom, no upstream sync)
+
+All three behavioral rules use `alwaysApply: true` frontmatter so they load in every session regardless of which files are open:
+
+```yaml
+---
+description: <one-line summary>
+alwaysApply: true
+---
+```
 
 **`critical-rules.md`** — "100% means 100%": actual config values, not variable names; actual metrics, not estimates. Verify before claiming. No temporary files.
 
@@ -223,15 +195,9 @@ Markdown files in `rules/`, symlinked to `.claude/rules/` in consumer projects. 
 
 **`investigation-protocol.md`** — Read code before grepping external links. Get production values from actual sources. Tool selection guidance.
 
-### Language rules (custom, no upstream sync)
-
-**`typescript.md`** — Triggered on `*.ts`, `*.tsx`. Covers: strict typing, async/await conventions, avoiding `any`, test patterns (vitest/jest), import organization.
-
-**`python.md`** — Triggered on `*.py`. Covers: type hints, dataclasses over dicts, async conventions, test patterns (pytest), dependency injection, avoiding bare `except`.
-
 Rules are authored in this repo and not synced from any upstream. No `.subtree-source` file — `update.sh` will not touch them.
 
-**Editing policy:** Rules are safe to edit directly. To add a new rule, drop a `.md` file in `rules/` — no special marker needed.
+**Editing policy:** Rules are safe to edit directly. To add a new rule, drop a `.md` file in `rules/` with frontmatter (`alwaysApply: true` for universal rules, or `globs: ["*.ext"]` for language/file-specific rules).
 
 ---
 
@@ -247,8 +213,6 @@ Five skills added from upstream, tracked in `update.sh`. Verified directory name
 | `code-review-excellence` | nitayk/ai-coding-rules | `skills/code-review-excellence/` | Effective review practices |
 | `best-practices-enforcement` | nitayk/ai-coding-rules | `skills/best-practices-enforcement/` | Universal code quality validation |
 
-Note: `agent-token-optimization` does not exist in ECC. The correct skill name is `token-budget-advisor`.
-
 ---
 
 ## Update Mechanism
@@ -262,12 +226,9 @@ Note: `agent-token-optimization` does not exist in ECC. The correct skill name i
 
 Agents, rules, and hooks are **not tracked in `update.sh`** — they are imported once (manually or via a one-time bootstrap script) and then maintained as custom content in this repo. This is enforced by simply not including them in `update.sh` lists. Running `update.sh` will never touch `agents/`, `rules/`, or `hooks/`.
 
-**Two new flags:**
+**One new flag:**
 
 - `--dry-run` — clones upstream repos but skips `rsync`. Outputs a diff of what would change using `diff -r`. Works with the single-item filter argument (e.g., `update.sh --dry-run tdd-workflow`).
-- `--diff` — clones upstream repos and shows a unified diff (`diff -u`) for each file that would change before applying. Prompts for confirmation before running `rsync`. Works with filter argument.
-
-Both flags are incompatible with each other; `--dry-run` takes precedence if both are passed.
 
 ---
 
@@ -275,11 +236,10 @@ Both flags are incompatible with each other; `--dry-run` takes precedence if bot
 
 `install.sh` updated to:
 
-1. Create symlinks for `agents`, `rules`, `hooks` in `.claude/` (and `agents`, `rules` in `.cursor/`)
+1. Create symlinks for `agents` and `rules` in `.claude/` and `.cursor/`
 2. Detect whether `jq` is available
-3. Prompt user whether to install quality hooks
-4. Merge security hooks (always) + quality hooks (if opted in) into `.claude/settings.json` using `jq` with idempotent append-by-path logic
-5. Print fallback JSON block with manual merge instructions if `jq` is unavailable; the fallback always prints security hooks, and quality hooks if opted in
+3. Merge security hooks into `.claude/settings.json` using `jq` with idempotent deep-append-by-path logic (preserves existing hooks from user or other tools)
+4. Print fallback JSON block with manual merge instructions if `jq` is unavailable
 
 No change to the submodule mechanism — `.dev-agent-rules/` at the project root, relative symlinks throughout.
 
@@ -292,8 +252,8 @@ New section documenting `agents/`, `hooks/`, and `rules/` with the editing polic
 - Do not edit dirs with `.subtree-source` (upstream-synced content)
 - `agents/`, `hooks/`, and `rules/` are safe to edit directly — no `.subtree-source`, not touched by `update.sh`
 - Adding an agent: drop a `.md` file in `agents/` using the Claude Code subagent frontmatter format
-- Adding a rule: drop a `.md` file in `rules/`
-- Adding a hook: drop a script in `hooks/` and wire it into `hooks.json` or re-run the relevant section of `install.sh`
+- Adding a rule: drop a `.md` file in `rules/` with `alwaysApply: true` or `globs:` frontmatter
+- Adding a hook: drop a script in `hooks/` and wire it into `.claude/settings.json`
 
 ---
 
@@ -301,7 +261,5 @@ New section documenting `agents/`, `hooks/`, and `rules/` with the editing polic
 
 - `agents/`: adapted from nitayk/ai-coding-rules (MIT)
 - `hooks/security/`: adapted from nitayk/ai-coding-rules (MIT)
-- `hooks/quality/`: adapted from nitayk/ai-coding-rules (MIT)
-- `hooks/session-start.sh`: adapted from obra/superpowers (MIT)
 - `rules/`: authored in this repo
 - New skills: see individual upstream sources in the New Skills table above

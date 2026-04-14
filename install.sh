@@ -8,10 +8,12 @@ set -e
 
 REPO="https://github.com/oratlv/dev-agent-rules.git"
 SUBMODULE_PATH=".dev-agent-rules"
-# Relative path from the symlink's parent dir (.claude/ or .cursor/) to the skills dir.
+# Symlinks are relative to symlink parent dir; hook commands are relative to project root.
 # Symlinks resolve relative to their own parent, so we need to go up one level first.
 SKILLS_RELATIVE="../.dev-agent-rules/skills"
 COMMANDS_RELATIVE="../.dev-agent-rules/commands"
+AGENTS_RELATIVE="../.dev-agent-rules/agents"
+RULES_RELATIVE="../.dev-agent-rules/rules"
 
 # Must be run from a git repo root
 if ! git rev-parse --show-toplevel > /dev/null 2>&1; then
@@ -46,7 +48,11 @@ link_skills() {
 echo "Creating symlinks..."
 link_skills ".claude/skills" "$SKILLS_RELATIVE"
 link_skills ".claude/commands" "$COMMANDS_RELATIVE"
+link_skills ".claude/agents" "$AGENTS_RELATIVE"
+link_skills ".claude/rules" "$RULES_RELATIVE"
 link_skills ".cursor/skills" "$SKILLS_RELATIVE"
+link_skills ".cursor/agents" "$AGENTS_RELATIVE"
+link_skills ".cursor/rules" "$RULES_RELATIVE"
 
 # Copy example MCP config if no .mcp.json exists yet
 if [ ! -f ".mcp.json" ]; then
@@ -56,9 +62,84 @@ else
   echo "  ⚠️  .mcp.json already exists. See $SUBMODULE_PATH/mcp/example.mcp.json for reference."
 fi
 
+# --- Security hooks ---
+# Hook commands use paths relative to project root (not symlinks).
+SETTINGS_FILE=".claude/settings.json"
+HOOK_BLOCK_SECRETS=".dev-agent-rules/hooks/security/block-secrets.sh"
+HOOK_SCAN_SECRETS=".dev-agent-rules/hooks/security/scan-secrets-edit.sh"
+
+# The JSON to merge into .claude/settings.json
+HOOKS_JSON=$(cat <<'ENDJSON'
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Read",
+        "hooks": [{ "type": "command", "command": ".dev-agent-rules/hooks/security/block-secrets.sh" }]
+      },
+      {
+        "matcher": "Write|Edit",
+        "hooks": [{ "type": "command", "command": ".dev-agent-rules/hooks/security/scan-secrets-edit.sh" }]
+      }
+    ]
+  }
+}
+ENDJSON
+)
+
+echo ""
+echo "Configuring security hooks in $SETTINGS_FILE..."
+
+if command -v jq > /dev/null 2>&1; then
+  # Ensure settings file exists
+  if [ ! -f "$SETTINGS_FILE" ]; then
+    echo '{}' > "$SETTINGS_FILE"
+  fi
+
+  # Read existing settings
+  EXISTING=$(cat "$SETTINGS_FILE")
+
+  # Build the merged result using jq:
+  #   - For each hook entry, check if the command path already exists in the array
+  #   - Only append if it does not exist (idempotent)
+  MERGED=$(echo "$EXISTING" | jq --arg cmd1 "$HOOK_BLOCK_SECRETS" --arg cmd2 "$HOOK_SCAN_SECRETS" '
+    # Ensure .hooks.PreToolUse exists as an array
+    .hooks //= {} | .hooks.PreToolUse //= [] |
+
+    # Add block-secrets hook if not already present
+    (if (.hooks.PreToolUse | map(select(.hooks[]?.command == $cmd1)) | length) == 0
+     then .hooks.PreToolUse += [{
+       "matcher": "Read",
+       "hooks": [{"type": "command", "command": $cmd1}]
+     }]
+     else . end) |
+
+    # Add scan-secrets-edit hook if not already present
+    (if (.hooks.PreToolUse | map(select(.hooks[]?.command == $cmd2)) | length) == 0
+     then .hooks.PreToolUse += [{
+       "matcher": "Write|Edit",
+       "hooks": [{"type": "command", "command": $cmd2}]
+     }]
+     else . end)
+  ')
+
+  echo "$MERGED" > "$SETTINGS_FILE"
+  echo "  ✓ Security hooks configured in $SETTINGS_FILE"
+else
+  # jq is not available — print manual instructions
+  echo "  ⚠️  jq is not installed. Cannot auto-merge security hooks."
+  echo ""
+  echo "  Please manually add the following to $SETTINGS_FILE:"
+  echo ""
+  echo "$HOOKS_JSON" | sed 's/^/    /'
+  echo ""
+  echo "  If the file already has a \"hooks\" object, merge the PreToolUse entries"
+  echo "  into the existing array rather than replacing it."
+fi
+
 echo ""
 echo "Done. To commit:"
-echo "  git add .gitmodules $SUBMODULE_PATH .claude/skills .claude/commands .cursor/skills .mcp.json"
+echo "  git add .gitmodules $SUBMODULE_PATH .claude/ .cursor/ .mcp.json"
 echo "  git commit -m 'Add dev-agent-rules skills module'"
 echo ""
 echo "To update skills in the future:"

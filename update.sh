@@ -118,9 +118,8 @@ for arg in "$@"; do
 done
 
 filter_list() {
-  local -n arr=$1
   if [ -n "$FILTER" ]; then
-    arr=("$FILTER")
+    eval "$1=(\"\$FILTER\")"
   fi
 }
 

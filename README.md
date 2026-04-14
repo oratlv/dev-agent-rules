@@ -8,7 +8,7 @@ Works with **Claude Code** and **Cursor**.
 
 | Component | Count | What it does |
 |-----------|-------|-------------|
-| **Skills** | 33 | Multi-step workflows: brainstorming, TDD, debugging, code review, plans |
+| **Skills** | 38 | Multi-step workflows: brainstorming, TDD, debugging, code review, plans |
 | **Agents** | 4 | Context-isolated specialists: architect, code-reviewer, security-auditor, verifier |
 | **Commands** | 5 | Quick actions: `/code-review`, `/prp-commit`, `/prp-pr`, `/plan`, `/build-fix` |
 | **Rules** | 3 | Always-on behavioral guidance: verification, git discipline, investigation |

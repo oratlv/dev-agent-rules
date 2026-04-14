@@ -22,6 +22,9 @@ case "$basename" in
   *.key)                          matched=true ;;
   *credentials*)                  matched=true ;;
   id_rsa | id_rsa.*)              matched=true ;;
+  id_ed25519 | id_ed25519.*)      matched=true ;;
+  id_ecdsa | id_ecdsa.*)          matched=true ;;
+  id_dsa | id_dsa.*)              matched=true ;;
   *.secret)                       matched=true ;;
   *.private)                      matched=true ;;
   *.p12)                          matched=true ;;

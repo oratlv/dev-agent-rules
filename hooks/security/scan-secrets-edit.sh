@@ -10,14 +10,17 @@ input="$(cat)"
 
 # Extract the content to scan. For Write the field is "content";
 # for Edit the field is "new_string". We check both.
+# Uses jq for reliable multiline JSON extraction.
 content=""
 
-# Try "content" field first (Write tool)
-content="$(printf '%s' "$input" | grep -o '"content"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | sed 's/.*: *"//;s/"$//')" || true
-
-# If empty, try "new_string" field (Edit tool)
-if [ -z "$content" ]; then
-  content="$(printf '%s' "$input" | grep -o '"new_string"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | sed 's/.*: *"//;s/"$//')" || true
+if command -v jq > /dev/null 2>&1; then
+  content="$(printf '%s' "$input" | jq -r '.content // .new_string // ""' 2>/dev/null)" || true
+else
+  # Fallback: grep-based extraction (single-line only)
+  content="$(printf '%s' "$input" | grep -o '"content"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | sed 's/.*: *"//;s/"$//')" || true
+  if [ -z "$content" ]; then
+    content="$(printf '%s' "$input" | grep -o '"new_string"[[:space:]]*:[[:space:]]*"[^"]*"' | head -1 | sed 's/.*: *"//;s/"$//')" || true
+  fi
 fi
 
 if [ -z "$content" ]; then
@@ -41,7 +44,7 @@ if [ "$secret_detected" = false ] && printf '%s' "$content" | grep -qE '[0-9a-zA
 fi
 
 # Generic API key patterns: key = "...", api_key = "...", token = "...", secret = "..."
-if [ "$secret_detected" = false ] && printf '%s' "$content" | grep -qiE '(api_key|api_secret|apikey|secret_key|access_token|auth_token|private_key|client_secret)[[:space:]]*[=:][[:space:]]*["\x27][A-Za-z0-9_.+/=-]{8,}'; then
+if [ "$secret_detected" = false ] && printf '%s' "$content" | grep -qiE '(api_key|api_secret|apikey|secret_key|access_token|auth_token|private_key|client_secret)[[:space:]]*[=:][[:space:]]*["'"'"'][A-Za-z0-9_.+/=-]{8,}'; then
   secret_detected=true
 fi
 
@@ -78,7 +81,7 @@ if [ "$secret_detected" = false ] && printf '%s' "$content" | grep -qE 'xox[bps]
 fi
 
 # Password assignments: password = "..."
-if [ "$secret_detected" = false ] && printf '%s' "$content" | grep -qiE '(password|passwd|pwd)[[:space:]]*[=:][[:space:]]*["\x27][^"\x27]{4,}'; then
+if [ "$secret_detected" = false ] && printf '%s' "$content" | grep -qiE '(password|passwd|pwd)[[:space:]]*[=:][[:space:]]*["'"'"'][^"'"'"']{4,}'; then
   secret_detected=true
 fi
 

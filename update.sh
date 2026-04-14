@@ -1,8 +1,7 @@
 #!/usr/bin/env bash
 # update.sh — Pull latest skills and commands from upstream sources into dev-agent-rules
 # Run this inside the dev-agent-rules repo to refresh from obra/superpowers,
-# anthropics/skills, affaan-m/everything-claude-code, and nitayk/ai-coding-rules,
-# then commit and push.
+# anthropics/skills, and affaan-m/everything-claude-code, then commit and push.
 #
 # Usage: bash update.sh [--dry-run] [skill-or-command-name]
 #   No args: update all skills and commands
@@ -18,6 +17,7 @@ COMMANDS_DIR="$SCRIPT_DIR/commands"
 OBRA_REPO="https://github.com/obra/superpowers"
 ANTHROPIC_REPO="https://github.com/anthropics/skills"
 ECC_REPO="https://github.com/affaan-m/everything-claude-code"
+
 # obra/superpowers: skills live in skills/<name>/
 OBRA_SKILLS=(
   brainstorming
@@ -72,7 +72,6 @@ ANTHROPIC_SKILLS=(
   web-artifacts-builder
 )
 
-
 update_skills_from_repo() {
   local repo=$1
   local src_subdir=$2   # subdirectory within the repo where skills live ("." for root)
@@ -122,6 +121,7 @@ filter_list OBRA_SKILLS
 filter_list ANTHROPIC_SKILLS
 filter_list ECC_SKILLS
 filter_list ECC_COMMANDS
+
 if [ ${#OBRA_SKILLS[@]} -gt 0 ]; then
   echo ""
   echo "=== obra/superpowers (skills) ==="
@@ -133,7 +133,6 @@ if [ ${#ANTHROPIC_SKILLS[@]} -gt 0 ]; then
   echo "=== anthropics/skills ==="
   update_skills_from_repo "$ANTHROPIC_REPO" "." "${ANTHROPIC_SKILLS[@]}"
 fi
-
 
 if [ ${#ECC_SKILLS[@]} -gt 0 ] || [ ${#ECC_COMMANDS[@]} -gt 0 ]; then
   echo ""

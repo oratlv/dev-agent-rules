@@ -1,7 +1,7 @@
 # Sources
 
-Skills in this repo are sourced from three upstream projects. Do not edit skill files
-that carry a `.subtree-source` marker — they will be overwritten by `update.sh`.
+Skills, agents, and hooks in this repo are sourced from four upstream projects.
+Do not edit skill files that carry a `.subtree-source` marker — they will be overwritten by `update.sh`.
 Add your own skills in `skills/` without a `.subtree-source` file.
 
 ---
@@ -23,7 +23,15 @@ frontend-design, web-artifacts-builder
 ## affaan-m/everything-claude-code
 **Repo:** https://github.com/affaan-m/everything-claude-code
 **License:** MIT
-**Skills (5):** strategic-compact, continuous-learning-v2, deep-research, prompt-optimizer, search-first
+**Skills (6):** strategic-compact, continuous-learning-v2, deep-research, prompt-optimizer, search-first,
+token-budget-advisor
+
+## nitayk/ai-coding-rules
+**Repo:** https://github.com/nitayk/ai-coding-rules
+**License:** MIT
+**Skills (4):** prd-generation, fix-issue, code-review-excellence, best-practices-enforcement
+**Agents (4):** architect, code-reviewer, security-auditor, verifier
+**Hooks (2):** block-secrets.sh, scan-secrets-edit.sh (adapted)
 
 ---
 

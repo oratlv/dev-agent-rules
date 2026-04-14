@@ -1,11 +1,13 @@
 #!/usr/bin/env bash
 # update.sh — Pull latest skills and commands from upstream sources into dev-agent-rules
 # Run this inside the dev-agent-rules repo to refresh from obra/superpowers,
-# anthropics/skills, and affaan-m/everything-claude-code, then commit and push.
+# anthropics/skills, affaan-m/everything-claude-code, and nitayk/ai-coding-rules,
+# then commit and push.
 #
-# Usage: bash update.sh [skill-or-command-name]
+# Usage: bash update.sh [--dry-run] [skill-or-command-name]
 #   No args: update all skills and commands
 #   With arg: update only the named item (e.g. bash update.sh tdd-workflow)
+#   --dry-run: clone upstream repos but only show diffs, don't copy files
 
 set -e
 
@@ -16,6 +18,7 @@ COMMANDS_DIR="$SCRIPT_DIR/commands"
 OBRA_REPO="https://github.com/obra/superpowers"
 ANTHROPIC_REPO="https://github.com/anthropics/skills"
 ECC_REPO="https://github.com/affaan-m/everything-claude-code"
+NITAYK_REPO="https://github.com/nitayk/ai-coding-rules"
 
 # obra/superpowers: skills live in skills/<name>/
 OBRA_SKILLS=(
@@ -42,6 +45,7 @@ ECC_SKILLS=(
   deep-research
   prompt-optimizer
   search-first
+  token-budget-advisor
 )
 
 # affaan-m/everything-claude-code: commands live in commands/<name>.md
@@ -66,6 +70,14 @@ ANTHROPIC_SKILLS=(
   web-artifacts-builder
 )
 
+# nitayk/ai-coding-rules: skills live in skills/<name>/
+NITAYK_SKILLS=(
+  prd-generation
+  fix-issue
+  code-review-excellence
+  best-practices-enforcement
+)
+
 update_skills_from_repo() {
   local repo=$1
   local src_subdir=$2   # subdirectory within the repo where skills live ("." for root)
@@ -83,14 +95,27 @@ update_skills_from_repo() {
       echo "  ⚠️  Skill not found in upstream: $skill (looked at $src_subdir/$skill)"
       continue
     fi
-    rsync -a --delete "$src/" "$SKILLS_DIR/$skill/"
-    echo "  ✓ $skill"
+    if [ "$DRY_RUN" = true ]; then
+      echo "  [dry-run] $skill:"
+      diff -r "$SKILLS_DIR/$skill/" "$src/" 2>/dev/null || true
+    else
+      rsync -a --delete "$src/" "$SKILLS_DIR/$skill/"
+      echo "  ✓ $skill"
+    fi
   done
 
   rm -rf "$tmp"
 }
 
-FILTER="${1:-}"
+# Parse flags
+DRY_RUN=false
+FILTER=""
+for arg in "$@"; do
+  case "$arg" in
+    --dry-run) DRY_RUN=true ;;
+    *) FILTER="$arg" ;;
+  esac
+done
 
 filter_list() {
   local -n arr=$1
@@ -103,6 +128,7 @@ filter_list OBRA_SKILLS
 filter_list ANTHROPIC_SKILLS
 filter_list ECC_SKILLS
 filter_list ECC_COMMANDS
+filter_list NITAYK_SKILLS
 
 if [ ${#OBRA_SKILLS[@]} -gt 0 ]; then
   echo ""
@@ -114,6 +140,12 @@ if [ ${#ANTHROPIC_SKILLS[@]} -gt 0 ]; then
   echo ""
   echo "=== anthropics/skills ==="
   update_skills_from_repo "$ANTHROPIC_REPO" "." "${ANTHROPIC_SKILLS[@]}"
+fi
+
+if [ ${#NITAYK_SKILLS[@]} -gt 0 ]; then
+  echo ""
+  echo "=== nitayk/ai-coding-rules (skills) ==="
+  update_skills_from_repo "$NITAYK_REPO" "skills" "${NITAYK_SKILLS[@]}"
 fi
 
 if [ ${#ECC_SKILLS[@]} -gt 0 ] || [ ${#ECC_COMMANDS[@]} -gt 0 ]; then
@@ -131,8 +163,13 @@ if [ ${#ECC_SKILLS[@]} -gt 0 ] || [ ${#ECC_COMMANDS[@]} -gt 0 ]; then
         echo "    ⚠️  Skill not found: $skill"
         continue
       fi
-      rsync -a --delete "$src/" "$SKILLS_DIR/$skill/"
-      echo "    ✓ $skill"
+      if [ "$DRY_RUN" = true ]; then
+        echo "    [dry-run] $skill:"
+        diff -r "$SKILLS_DIR/$skill/" "$src/" 2>/dev/null || true
+      else
+        rsync -a --delete "$src/" "$SKILLS_DIR/$skill/"
+        echo "    ✓ $skill"
+      fi
     done
   fi
 
@@ -145,8 +182,13 @@ if [ ${#ECC_SKILLS[@]} -gt 0 ] || [ ${#ECC_COMMANDS[@]} -gt 0 ]; then
         echo "    ⚠️  Command not found: $cmd.md"
         continue
       fi
-      cp "$src" "$COMMANDS_DIR/$cmd.md"
-      echo "    ✓ $cmd"
+      if [ "$DRY_RUN" = true ]; then
+        echo "    [dry-run] $cmd:"
+        diff "$COMMANDS_DIR/$cmd.md" "$src" 2>/dev/null || true
+      else
+        cp "$src" "$COMMANDS_DIR/$cmd.md"
+        echo "    ✓ $cmd"
+      fi
     done
   fi
 
@@ -154,7 +196,11 @@ if [ ${#ECC_SKILLS[@]} -gt 0 ] || [ ${#ECC_COMMANDS[@]} -gt 0 ]; then
 fi
 
 echo ""
-echo "Update complete."
-echo "Review changes with: git diff --stat"
-echo "Then commit and push:"
-echo "  git add skills/ commands/ && git commit -m 'Update skills and commands from upstream' && git push"
+if [ "$DRY_RUN" = true ]; then
+  echo "Dry run complete. No files were modified."
+else
+  echo "Update complete."
+  echo "Review changes with: git diff --stat"
+  echo "Then commit and push:"
+  echo "  git add skills/ commands/ && git commit -m 'Update skills and commands from upstream' && git push"
+fi

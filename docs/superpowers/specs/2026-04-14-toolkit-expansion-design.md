@@ -62,13 +62,13 @@ my-project/
     └── settings.json   ← hooks wired in by install script
 ```
 
-`.cursor/` gets symlinks for `skills`, `agents`, and `rules` (Cursor supports all three).
+`.cursor/` gets symlinks for `skills`, `agents`, and `rules`. Hooks are not symlinked into `.cursor/` — Cursor does not have a hooks system equivalent to Claude Code's.
 
 ---
 
 ## Agents
 
-Nine subagent `.md` files in `agents/`, adapted from nitayk/ai-coding-rules (MIT):
+Nine subagent `.md` files in `agents/`, adapted from nitayk/ai-coding-rules (MIT). These are imported once and treated as custom content in this repo — they are not re-synced from upstream on subsequent `update.sh` runs.
 
 | Agent | Purpose |
 |---|---|
@@ -84,7 +84,7 @@ Nine subagent `.md` files in `agents/`, adapted from nitayk/ai-coding-rules (MIT
 
 Agents complement existing skills: skills instruct Claude how to behave; agents are context-isolated specialists Claude delegates work to. Two agents overlap conceptually with existing skills (`requesting-code-review` → `code-reviewer`, `verification-before-completion` → `verifier`) but serve different roles — the skills define workflows, the agents execute specialist reviews.
 
-Agent files follow the Claude Code agent format:
+Agent files follow the Claude Code subagent format:
 ```
 ---
 name: <agent-name>
@@ -94,31 +94,120 @@ model: inherit
 <system prompt>
 ```
 
+**Editing policy:** Agents are safe to edit directly. To add a new agent, drop a `.md` file in `agents/` using the format above.
+
 ---
 
 ## Hooks
 
-Three categories. Scripts live in `hooks/` and are symlinked into `.claude/hooks/` in consumer projects. Hook configuration is merged into `.claude/settings.json` by `install.sh`.
+Three categories of hooks. Scripts live in `hooks/` and are symlinked into `.claude/hooks/` in consumer projects. Hook configuration is merged into `.claude/settings.json` by `install.sh`. All hooks are imported once and treated as custom — they are not re-synced from upstream.
 
 ### Security (always-on)
 
-**`block-secrets.sh`** — `PreToolUse[Read]` hook. Denies Claude read access to files matching sensitive patterns: `.env`, `.pem`, `.key`, `*credentials*`, `id_rsa`, etc. Returns `{"permission": "deny"}` with a user message.
+**`block-secrets.sh`** — `PreToolUse` hook, matcher: `Read`. Receives the file path via stdin as JSON and denies access to files matching sensitive patterns: `.env`, `.pem`, `.key`, `*credentials*`, `id_rsa`, etc. Exits 0 with the following output to block the tool use:
 
-**`scan-secrets-edit.sh`** — `PreToolUse[Write,Edit]` hook. Warns when a file being written contains patterns that look like secrets (API keys, tokens, private key headers). Does not block — returns a warning in `hookSpecificOutput`.
+```json
+{
+  "hookSpecificOutput": {
+    "hookEventName": "PreToolUse",
+    "permissionDecision": "deny",
+    "permissionDecisionReason": "Access to sensitive file blocked: .env"
+  }
+}
+```
+
+**`scan-secrets-edit.sh`** — `PreToolUse` hook, matchers: `Write`, `Edit`. Scans the content being written for patterns that look like secrets (API keys, tokens, private key headers). Prompts the user to confirm rather than blocking outright. Exits 0 with:
+
+```json
+{
+  "hookSpecificOutput": {
+    "hookEventName": "PreToolUse",
+    "permissionDecision": "ask",
+    "permissionDecisionReason": "Warning: this file may contain secrets. Confirm you want to write it."
+  }
+}
+```
+
+No output (exits 0 with no JSON) when no secrets patterns are found.
 
 ### Quality (opt-in at install time)
 
-**`validate-yaml.py`** — `PostToolUse[Write,Edit]` hook. Runs on `.yml`/`.yaml` files after edit. If YAML is invalid, injects a warning so Claude can self-correct.
+**`validate-yaml.py`** — `PostToolUse` hook, matchers: `Write`, `Edit`. Runs only on `.yml`/`.yaml` files after edit. If YAML is invalid, blocks Claude from continuing and provides the parse error so it can self-correct. Exits 0 with:
 
-**`format-after-edit.sh`** — `PostToolUse[Write,Edit]` hook. Detects project formatter config (prettier, black, ruff) and triggers formatting after edits. No-ops if no formatter is found.
+```json
+{
+  "decision": "block",
+  "reason": "YAML syntax error: <parse error detail>. Fix the file before proceeding.",
+  "hookSpecificOutput": {
+    "hookEventName": "PostToolUse",
+    "additionalContext": "<full yaml.safe_load traceback>"
+  }
+}
+```
+
+No-ops on non-YAML files (exits 0 with no output).
+
+**`format-after-edit.sh`** — `PostToolUse` hook, matchers: `Write`, `Edit`. Detects project formatter config (prettier, black, ruff) and runs formatting after edits. No-ops if no formatter config is found. Exits 0 with no JSON output — formatting runs silently in the background.
 
 ### Session
 
-**`session-start.sh`** — `SessionStart` hook. Injects the `using-superpowers` skill content into context so Claude knows skills are available from the first message.
+**`session-start.sh`** — `SessionStart` hook. Injects the `using-superpowers` skill content into context using the `hookSpecificOutput.additionalContext` JSON field. This fires per-project (the hook is installed into each project's `.claude/settings.json`). If the `using-superpowers` skill file is not found, the hook exits cleanly with no output.
+
+Output format:
+```json
+{
+  "hookSpecificOutput": {
+    "hookEventName": "SessionStart",
+    "additionalContext": "<content of using-superpowers/SKILL.md>"
+  }
+}
+```
+
+### Hook settings.json format
+
+The target JSON shape injected into `.claude/settings.json` (hooks use the Claude Code hooks API format — scripts output JSON to stdout, exit 0):
+
+```json
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Read",
+        "hooks": [{ "type": "command", "command": ".dev-agent-rules/hooks/security/block-secrets.sh" }]
+      },
+      {
+        "matcher": "Write|Edit",
+        "hooks": [{ "type": "command", "command": ".dev-agent-rules/hooks/security/scan-secrets-edit.sh" }]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [{ "type": "command", "command": ".dev-agent-rules/hooks/quality/validate-yaml.py" }]
+      },
+      {
+        "matcher": "Write|Edit",
+        "hooks": [{ "type": "command", "command": ".dev-agent-rules/hooks/quality/format-after-edit.sh" }]
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [{ "type": "command", "command": ".dev-agent-rules/hooks/session-start.sh" }]
+      }
+    ]
+  }
+}
+```
+
+Quality hooks (`validate-yaml.py`, `format-after-edit.sh`) are only included when the user opts in during install.
 
 ### Install behavior
 
-`install.sh` uses `jq` to merge hook config into `.claude/settings.json`. Security hooks are always wired in. Quality hooks prompt the user during install. If `jq` is not available, the script prints the required JSON block and instructs the user to merge manually.
+`install.sh` merges hook config into `.claude/settings.json` using `jq`. Merge strategy: **append by script path** — if a hook entry with the same `command` path already exists in `settings.json`, it is skipped. This makes the install idempotent and safe to re-run.
+
+If `jq` is not available, the script prints the full security hooks JSON block (quality hooks if opted in) and instructs the user to merge it into `.claude/settings.json` manually.
+
+**Editing policy:** All hooks are safe to edit directly. No `.subtree-source` file — `update.sh` will not touch the `hooks/` directory.
 
 ---
 
@@ -142,37 +231,43 @@ Markdown files in `rules/`, symlinked to `.claude/rules/` in consumer projects. 
 
 Rules are authored in this repo and not synced from any upstream. No `.subtree-source` file — `update.sh` will not touch them.
 
+**Editing policy:** Rules are safe to edit directly. To add a new rule, drop a `.md` file in `rules/` — no special marker needed.
+
 ---
 
 ## New Skills
 
-Five skills added from upstream, tracked in `update.sh`:
+Five skills added from upstream, tracked in `update.sh`. Verified directory names against source repos:
 
-| Skill | Source | Purpose |
-|---|---|---|
-| `prd-generation` | ECC (affaan-m/everything-claude-code) | Structured PRD creation via conversation |
-| `fix-issue` | ECC | End-to-end GitHub issue resolution |
-| `agent-token-optimization` | ECC | Token cost awareness for agentic workflows |
-| `code-review-excellence` | nitayk/ai-coding-rules | Effective review practices |
-| `best-practices-enforcement` | nitayk/ai-coding-rules | Universal code quality validation |
+| Skill | Source | Verified path | Purpose |
+|---|---|---|---|
+| `prd-generation` | nitayk/ai-coding-rules | `skills/prd-generation/` | Structured PRD creation via conversation |
+| `fix-issue` | nitayk/ai-coding-rules | `skills/fix-issue/` | End-to-end GitHub issue resolution |
+| `token-budget-advisor` | ECC | `skills/token-budget-advisor/` | Token cost awareness for agentic workflows |
+| `code-review-excellence` | nitayk/ai-coding-rules | `skills/code-review-excellence/` | Effective review practices |
+| `best-practices-enforcement` | nitayk/ai-coding-rules | `skills/best-practices-enforcement/` | Universal code quality validation |
+
+Note: `agent-token-optimization` does not exist in ECC. The correct skill name is `token-budget-advisor`.
 
 ---
 
 ## Update Mechanism
 
-`update.sh` gains new sections:
+`update.sh` gains new sections for the two new upstream sources:
 
 | Section | Source repo | What syncs |
 |---|---|---|
-| ECC skills (existing) | `affaan-m/everything-claude-code` | Existing + 3 new skills |
-| nitayk skills | `nitayk/ai-coding-rules` | `code-review-excellence`, `best-practices-enforcement` |
-| nitayk agents (initial) | `nitayk/ai-coding-rules` | 9 agents on first pull; treated as custom after import |
+| ECC skills (existing + new) | `affaan-m/everything-claude-code` | Existing ECC skills + `token-budget-advisor` |
+| nitayk skills | `nitayk/ai-coding-rules` | `prd-generation`, `fix-issue`, `code-review-excellence`, `best-practices-enforcement` |
 
-Agents, rules, and hooks are **not re-synced** after initial import — they are treated as custom content maintained in this repo. The `.subtree-source` marker file is not added to these directories.
+Agents, rules, and hooks are **not tracked in `update.sh`** — they are imported once (manually or via a one-time bootstrap script) and then maintained as custom content in this repo. This is enforced by simply not including them in `update.sh` lists. Running `update.sh` will never touch `agents/`, `rules/`, or `hooks/`.
 
-Two new flags added to `update.sh`:
-- `--dry-run` — shows what would change without applying
-- `--diff` — shows file diffs before applying changes
+**Two new flags:**
+
+- `--dry-run` — clones upstream repos but skips `rsync`. Outputs a diff of what would change using `diff -r`. Works with the single-item filter argument (e.g., `update.sh --dry-run tdd-workflow`).
+- `--diff` — clones upstream repos and shows a unified diff (`diff -u`) for each file that would change before applying. Prompts for confirmation before running `rsync`. Works with filter argument.
+
+Both flags are incompatible with each other; `--dry-run` takes precedence if both are passed.
 
 ---
 
@@ -180,10 +275,11 @@ Two new flags added to `update.sh`:
 
 `install.sh` updated to:
 
-1. Create symlinks for `agents`, `rules`, `hooks` in `.claude/` and `.cursor/`
-2. Wire hook configuration into `.claude/settings.json` via `jq`
-3. Prompt user for quality hooks opt-in
-4. Print fallback instructions if `jq` is unavailable
+1. Create symlinks for `agents`, `rules`, `hooks` in `.claude/` (and `agents`, `rules` in `.cursor/`)
+2. Detect whether `jq` is available
+3. Prompt user whether to install quality hooks
+4. Merge security hooks (always) + quality hooks (if opted in) into `.claude/settings.json` using `jq` with idempotent append-by-path logic
+5. Print fallback JSON block with manual merge instructions if `jq` is unavailable; the fallback always prints security hooks, and quality hooks if opted in
 
 No change to the submodule mechanism — `.dev-agent-rules/` at the project root, relative symlinks throughout.
 
@@ -191,11 +287,13 @@ No change to the submodule mechanism — `.dev-agent-rules/` at the project root
 
 ## CLAUDE.md Changes
 
-New section documenting `agents/`, `hooks/`, and `rules/` with the same editing policy:
-- Do not edit dirs with `.subtree-source`
-- Rules and agents are safe to edit directly
-- Adding agents: drop a `.md` file in `agents/` following the agent frontmatter format
-- Adding rules: drop a `.md` file in `rules/` — no special marker needed
+New section documenting `agents/`, `hooks/`, and `rules/` with the editing policy:
+
+- Do not edit dirs with `.subtree-source` (upstream-synced content)
+- `agents/`, `hooks/`, and `rules/` are safe to edit directly — no `.subtree-source`, not touched by `update.sh`
+- Adding an agent: drop a `.md` file in `agents/` using the Claude Code subagent frontmatter format
+- Adding a rule: drop a `.md` file in `rules/`
+- Adding a hook: drop a script in `hooks/` and wire it into `hooks.json` or re-run the relevant section of `install.sh`
 
 ---
 
@@ -203,6 +301,7 @@ New section documenting `agents/`, `hooks/`, and `rules/` with the same editing 
 
 - `agents/`: adapted from nitayk/ai-coding-rules (MIT)
 - `hooks/security/`: adapted from nitayk/ai-coding-rules (MIT)
+- `hooks/quality/`: adapted from nitayk/ai-coding-rules (MIT)
 - `hooks/session-start.sh`: adapted from obra/superpowers (MIT)
 - `rules/`: authored in this repo
-- New skills: see individual upstream sources above
+- New skills: see individual upstream sources in the New Skills table above

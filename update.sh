@@ -1,8 +1,7 @@
 #!/usr/bin/env bash
 # update.sh — Pull latest skills and commands from upstream sources into dev-agent-rules
 # Run this inside the dev-agent-rules repo to refresh from obra/superpowers,
-# anthropics/skills, affaan-m/everything-claude-code, and nitayk/ai-coding-rules,
-# then commit and push.
+# anthropics/skills, and affaan-m/everything-claude-code, then commit and push.
 #
 # Usage: bash update.sh [--dry-run] [skill-or-command-name]
 #   No args: update all skills and commands
@@ -18,7 +17,6 @@ COMMANDS_DIR="$SCRIPT_DIR/commands"
 OBRA_REPO="https://github.com/obra/superpowers"
 ANTHROPIC_REPO="https://github.com/anthropics/skills"
 ECC_REPO="https://github.com/affaan-m/everything-claude-code"
-NITAYK_REPO="https://github.com/nitayk/ai-coding-rules"
 
 # obra/superpowers: skills live in skills/<name>/
 OBRA_SKILLS=(
@@ -46,6 +44,10 @@ ECC_SKILLS=(
   prompt-optimizer
   search-first
   token-budget-advisor
+  prd-generation
+  fix-issue
+  code-review-excellence
+  best-practices-enforcement
 )
 
 # affaan-m/everything-claude-code: commands live in commands/<name>.md
@@ -68,14 +70,6 @@ ANTHROPIC_SKILLS=(
   webapp-testing
   frontend-design
   web-artifacts-builder
-)
-
-# nitayk/ai-coding-rules: skills live in skills/<name>/
-NITAYK_SKILLS=(
-  prd-generation
-  fix-issue
-  code-review-excellence
-  best-practices-enforcement
 )
 
 update_skills_from_repo() {
@@ -127,7 +121,6 @@ filter_list OBRA_SKILLS
 filter_list ANTHROPIC_SKILLS
 filter_list ECC_SKILLS
 filter_list ECC_COMMANDS
-filter_list NITAYK_SKILLS
 
 if [ ${#OBRA_SKILLS[@]} -gt 0 ]; then
   echo ""
@@ -139,12 +132,6 @@ if [ ${#ANTHROPIC_SKILLS[@]} -gt 0 ]; then
   echo ""
   echo "=== anthropics/skills ==="
   update_skills_from_repo "$ANTHROPIC_REPO" "." "${ANTHROPIC_SKILLS[@]}"
-fi
-
-if [ ${#NITAYK_SKILLS[@]} -gt 0 ]; then
-  echo ""
-  echo "=== nitayk/ai-coding-rules (skills) ==="
-  update_skills_from_repo "$NITAYK_REPO" "skills" "${NITAYK_SKILLS[@]}"
 fi
 
 if [ ${#ECC_SKILLS[@]} -gt 0 ] || [ ${#ECC_COMMANDS[@]} -gt 0 ]; then

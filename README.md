@@ -226,8 +226,7 @@ Curated from the best community projects:
 
 - **[obra/superpowers](https://github.com/obra/superpowers)** (MIT) — The autonomous dev workflow. 14 skills.
 - **[anthropics/skills](https://github.com/anthropics/skills)** (Apache 2.0) — Official Claude skills. 9 skills.
-- **[affaan-m/everything-claude-code](https://github.com/affaan-m/everything-claude-code)** (MIT) — Community skills and commands. 6 skills, 5 commands.
-- **[nitayk/ai-coding-rules](https://github.com/nitayk/ai-coding-rules)** (MIT) — Agents, hooks, and workflow skills. 4 skills, 4 agents, 2 hooks.
+- **[affaan-m/everything-claude-code](https://github.com/affaan-m/everything-claude-code)** (MIT) — Community skills and commands. 10 skills, 5 commands.
 
 Full attribution in [SOURCES.md](SOURCES.md).
 

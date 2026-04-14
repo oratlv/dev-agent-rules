@@ -1,8 +1,8 @@
 # dev-agent-rules
 
-Personal AI agent skills module — a single source of truth for Claude Code and Cursor across all personal projects.
+Personal AI agent toolkit — a single source of truth for Claude Code and Cursor across all personal projects.
 
-**23 skills** from [obra/superpowers](https://github.com/obra/superpowers) and [anthropics/skills](https://github.com/anthropics/skills).
+**28 skills**, **4 agents**, **3 rules**, and **security hooks** from [obra/superpowers](https://github.com/obra/superpowers), [anthropics/skills](https://github.com/anthropics/skills), [affaan-m/everything-claude-code](https://github.com/affaan-m/everything-claude-code), and [nitayk/ai-coding-rules](https://github.com/nitayk/ai-coding-rules).
 
 ---
 
@@ -22,12 +22,17 @@ curl -fsSL https://raw.githubusercontent.com/oratlv/dev-agent-rules/main/install
 
 This adds `dev-agent-rules` as a git submodule at `.dev-agent-rules/` and creates relative symlinks:
 - `.claude/skills → ../.dev-agent-rules/skills`
+- `.claude/commands → ../.dev-agent-rules/commands`
+- `.claude/agents → ../.dev-agent-rules/agents`
+- `.claude/rules → ../.dev-agent-rules/rules`
 - `.cursor/skills → ../.dev-agent-rules/skills`
+- `.cursor/agents → ../.dev-agent-rules/agents`
+- `.cursor/rules → ../.dev-agent-rules/rules`
 
 Then commit:
 ```bash
-git add .gitmodules .dev-agent-rules .claude/skills .cursor/skills
-git commit -m "Add dev-agent-rules skills module"
+git add .gitmodules .dev-agent-rules .claude .cursor .mcp.json
+git commit -m "Add dev-agent-rules toolkit"
 ```
 
 ---
@@ -92,6 +97,60 @@ git add .dev-agent-rules && git commit -m "Update dev-agent-rules"
 | `webapp-testing` | Playwright-based web app testing |
 | `frontend-design` | Production-grade frontend UI (no generic "AI slop") |
 | `web-artifacts-builder` | Multi-component React artifacts (Tailwind + shadcn/ui) |
+
+### affaan-m/everything-claude-code (MIT)
+| Skill | Purpose |
+|-------|---------|
+| `strategic-compact` | Context-preserving conversation compaction |
+| `continuous-learning-v2` | Evolving knowledge base across sessions |
+| `deep-research` | Multi-source research and synthesis |
+| `prompt-optimizer` | Iterative prompt refinement |
+| `search-first` | Search before implementing |
+| `token-budget-advisor` | Informed choice about response depth |
+
+### nitayk/ai-coding-rules (MIT)
+| Skill | Purpose |
+|-------|---------|
+| `prd-generation` | Generate PRDs through structured conversation |
+| `fix-issue` | Fetch a GitHub issue and implement a fix with tests |
+| `code-review-excellence` | Structured code review methodology |
+| `best-practices-enforcement` | Validate code against SOLID, DRY, security patterns |
+
+---
+
+## Agents
+
+Subagent definitions in `agents/` — dispatched by Claude Code for specialized tasks.
+
+| Agent | Purpose |
+|-------|---------|
+| `architect` | System design, scalability, and technical decisions |
+| `code-reviewer` | Review implementations against plans and standards |
+| `security-auditor` | Scan for vulnerabilities, credential exposure, CVEs |
+| `verifier` | Validate completed work, run tests, check edge cases |
+
+---
+
+## Hooks
+
+Security hooks in `hooks/security/` are wired into `.claude/settings.json` by `install.sh`.
+
+| Hook | Trigger | Purpose |
+|------|---------|---------|
+| `block-secrets.sh` | PreToolUse (Read) | Block access to sensitive files (.env, credentials) |
+| `scan-secrets-edit.sh` | PreToolUse (Write/Edit) | Detect secret-like patterns in content being written |
+
+---
+
+## Rules
+
+Behavioral rules in `rules/` are applied to every conversation (`alwaysApply: true`).
+
+| Rule | Purpose |
+|------|---------|
+| `critical-rules` | Verify don't assume, complete all work, no garbage files |
+| `git-workflow` | Staging, commits, branches, PRs, and what never to commit |
+| `investigation-protocol` | Read before grep, actual values not variable names |
 
 ---
 

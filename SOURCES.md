@@ -23,13 +23,12 @@ frontend-design, web-artifacts-builder
 ## affaan-m/everything-claude-code
 **Repo:** https://github.com/affaan-m/everything-claude-code
 **License:** MIT
-**Skills (6):** strategic-compact, continuous-learning-v2, deep-research, prompt-optimizer, search-first,
-token-budget-advisor
+**Skills (10):** strategic-compact, continuous-learning-v2, deep-research, prompt-optimizer, search-first,
+token-budget-advisor, prd-generation, fix-issue, code-review-excellence, best-practices-enforcement
 
 ## nitayk/ai-coding-rules
 **Repo:** https://github.com/nitayk/ai-coding-rules
 **License:** MIT
-**Skills (4):** prd-generation, fix-issue, code-review-excellence, best-practices-enforcement
 **Agents (4):** architect, code-reviewer, security-auditor, verifier
 **Hooks (2):** block-secrets.sh, scan-secrets-edit.sh (adapted)
 

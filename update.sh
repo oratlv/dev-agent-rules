@@ -18,8 +18,6 @@ COMMANDS_DIR="$SCRIPT_DIR/commands"
 OBRA_REPO="https://github.com/obra/superpowers"
 ANTHROPIC_REPO="https://github.com/anthropics/skills"
 ECC_REPO="https://github.com/affaan-m/everything-claude-code"
-NITAYK_REPO="https://github.com/nitayk/ai-coding-rules"
-
 # obra/superpowers: skills live in skills/<name>/
 OBRA_SKILLS=(
   brainstorming
@@ -46,6 +44,10 @@ ECC_SKILLS=(
   prompt-optimizer
   search-first
   token-budget-advisor
+  prd-generation
+  fix-issue
+  code-review-excellence
+  best-practices-enforcement
 )
 
 # affaan-m/everything-claude-code: commands live in commands/<name>.md
@@ -70,13 +72,6 @@ ANTHROPIC_SKILLS=(
   web-artifacts-builder
 )
 
-# nitayk/ai-coding-rules: skills live in skills/<name>/
-NITAYK_SKILLS=(
-  prd-generation
-  fix-issue
-  code-review-excellence
-  best-practices-enforcement
-)
 
 update_skills_from_repo() {
   local repo=$1
@@ -127,8 +122,6 @@ filter_list OBRA_SKILLS
 filter_list ANTHROPIC_SKILLS
 filter_list ECC_SKILLS
 filter_list ECC_COMMANDS
-filter_list NITAYK_SKILLS
-
 if [ ${#OBRA_SKILLS[@]} -gt 0 ]; then
   echo ""
   echo "=== obra/superpowers (skills) ==="
@@ -141,11 +134,6 @@ if [ ${#ANTHROPIC_SKILLS[@]} -gt 0 ]; then
   update_skills_from_repo "$ANTHROPIC_REPO" "." "${ANTHROPIC_SKILLS[@]}"
 fi
 
-if [ ${#NITAYK_SKILLS[@]} -gt 0 ]; then
-  echo ""
-  echo "=== nitayk/ai-coding-rules (skills) ==="
-  update_skills_from_repo "$NITAYK_REPO" "skills" "${NITAYK_SKILLS[@]}"
-fi
 
 if [ ${#ECC_SKILLS[@]} -gt 0 ] || [ ${#ECC_COMMANDS[@]} -gt 0 ]; then
   echo ""
